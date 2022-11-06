@@ -15,11 +15,28 @@ function isPlayerPacket(type: Packet["type"])
            type == Packet.Type.PlayerPositionAndLook
 }
 
+function isEntityPacket(type: Packet["type"])
+{
+    return type == Packet.Type.Entity ||
+           type == Packet.Type.EntityAction ||
+           type == Packet.Type.EntityEquipment ||
+           type == Packet.Type.EntityLook ||
+           type == Packet.Type.EntityLookAndRelativeMove ||
+           type == Packet.Type.EntityMetadata ||
+           type == Packet.Type.EntityPainting ||
+           type == Packet.Type.EntityRelativeMove ||
+           type == Packet.Type.EntityStatus ||
+           type == Packet.Type.EntityTeleport ||
+           type == Packet.Type.EntityVelocity ||
+           type == Packet.Type.MobSpawn ||
+           type == Packet.Type.DestroyEntity
+}
+
 proxyClient.on("data",(data) =>
 {
     const buffer = new NBuffer(data)
     buffer.endian = "big"
-    const packets = Packet.Server.readArray(buffer)
+    const packets = Packet.Server.readArray(buffer).filter((p) => !isEntityPacket(p.type))
     if(packets.length > 0) console.dir(packets)
     if(socket) socket.write(data)
 })
@@ -36,8 +53,8 @@ const proxyServer = createServer((S) =>
     {
         const buffer = new NBuffer(data)
         buffer.endian = "big"
-        const packet = Packet.Client.read(buffer)
-        if(!isPlayerPacket(packet.type)) console.dir(packet)
+        const packet = Packet.Client.readArray(buffer)[0]
+        if(packet && !isPlayerPacket(packet.type)) console.dir(packet)
         proxyClient.write(data)
     })
 })

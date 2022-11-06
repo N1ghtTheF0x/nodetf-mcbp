@@ -1,8 +1,8 @@
 import NBuffer from "@nodetf/buffer"
 
-class Metadata
+class Metadata<Type extends Metadata.Type = Metadata.Type.Any>
 {
-    constructor(readonly type: Metadata.Type,readonly bitmask: number,readonly data: Metadata.TypeMap[Metadata["type"]])
+    constructor(readonly type: Type,readonly bitmask: number,readonly data: Metadata.TypeMap[Type])
     {
 
     }
@@ -12,7 +12,7 @@ namespace Metadata
 {
     export enum Type
     {
-        None = -1,
+        Any = -1,
         Byte,
         Short,
         Int,
@@ -21,9 +21,9 @@ namespace Metadata
         Item,
         Vector
     }
-    export interface TypeMap
+    export type TypeMap =
     {
-        [Type.None]: never
+        [Type.Any]: any
         [Type.Byte]: number
         [Type.Short]: number
         [Type.Int]: number
@@ -32,9 +32,9 @@ namespace Metadata
         [Type.Item]: {id: number,count: number,damage: number}
         [Type.Vector]: {x: number,y: number,z: number}
     }
-    export function read(buffer: NBuffer)
+    export function read<MetaType extends Type>(buffer: NBuffer)
     {
-        const arr: Metadata[] = []
+        const arr: Metadata<TypeMap[Type]>[] = []
         for(var index = buffer.readInt8();index != 127;index = buffer.readInt8())
         {
             const type: Type = (index & 0xe0) >> 5
@@ -53,6 +53,8 @@ namespace Metadata
                 case Type.Float:
                     arr.push(new Metadata(Type.Float,bitmask,buffer.readFloat()))
                     break
+                case Type.String:
+                    arr.push(new Metadata(Type.String,bitmask,buffer.readString(buffer.readInt16(),"ucs-2")))
                 case Type.Item:
                     arr.push(new Metadata(Type.Item,bitmask,{
                         id: buffer.readInt16(),
