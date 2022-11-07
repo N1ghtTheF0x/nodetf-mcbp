@@ -29,7 +29,10 @@ function isEntityPacket(type: Packet["type"])
            type == Packet.Type.EntityTeleport ||
            type == Packet.Type.EntityVelocity ||
            type == Packet.Type.MobSpawn ||
-           type == Packet.Type.DestroyEntity
+           type == Packet.Type.DestroyEntity ||
+           type == Packet.Type.MultiBlockChange ||
+           type == Packet.Type.BlockChange ||
+           type == Packet.Type.AddObjectVehicle
 }
 
 proxyClient.on("data",(data) =>

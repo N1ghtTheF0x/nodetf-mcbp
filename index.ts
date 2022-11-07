@@ -1,7 +1,8 @@
 import NBuffer from "@nodetf/buffer"
-import Metadata from "./metadata"
+import DataWatcher, { Metadata } from "./metadata"
 
 import { inflateSync } from "node:zlib"
+import ItemStack from "./itemstack"
 
 function readString8(buffer: NBuffer)
 {
@@ -368,7 +369,7 @@ namespace Packet
             toBuffer(): NBuffer
             {
                 const title = this.title.substring(0,13)
-                const buffer = new NBuffer(21+title.length)
+                const buffer = new NBuffer(21+2+title.length)
                 this.writeType(buffer)
                 buffer.writeInt32(this.entityID)
                 writeString16(buffer,title)
@@ -562,7 +563,7 @@ namespace Packet
             username: string = String()
             toBuffer(): NBuffer
             {
-                const buffer = new NBuffer(23+MAX_STRING_LENGTH)
+                const buffer = new NBuffer(23+2+this.username.substring(0,MAX_STRING_LENGTH).length)
                 this.writeType(buffer)
                 buffer.writeInt32(this.version)
                 writeString16(buffer,this.username.substring(0,MAX_STRING_LENGTH))
@@ -581,7 +582,7 @@ namespace Packet
             username: string = String()
             toBuffer(): NBuffer
             {
-                const buffer = new NBuffer(3+MAX_STRING_LENGTH)
+                const buffer = new NBuffer(3+2+this.username.substring(0,MAX_STRING_LENGTH).length)
                 this.writeType(buffer)
                 writeString16(buffer,this.username.substring(0,MAX_STRING_LENGTH))
                 return buffer    
@@ -812,6 +813,30 @@ namespace Packet
                     return new MultiBlockChange().parse(buffer)
                 case Type.BlockChange:
                     return new BlockChange().parse(buffer)
+                case Type.BlockAction:
+                    return new BlockAction().parse(buffer)
+                case Type.Explosion:
+                    return new Explosion().parse(buffer)
+                case Type.SoundEffect:
+                    return new SoundEffect().parse(buffer)
+                case Type.NewInvalidState:
+                    return new NewInvalidState().parse(buffer)
+                case Type.Thunderbolt:
+                    return new Thunderbolt().parse(buffer)
+                case Type.OpenWindow:
+                    return new OpenWindow().parse(buffer)
+                case Type.SetSlot:
+                    return new SetSlot().parse(buffer)
+                case Type.WindowItems:
+                    return new WindowItems().parse(buffer)
+                case Type.UpdateProgressBar:
+                    return new UpdateProgressBar().parse(buffer)
+                case Type.ItemData:
+                    return new ItemData().parse(buffer)
+                case Type.IncrementStatistic:
+                    return new IncrementStatistic().parse(buffer)
+                case Type.DisconnectKick:
+                    return new DisconnectKick().parse(buffer)
                 default:
                     throw new Error(`${Type[type]} is not a Server Packet!`)
             }
@@ -974,7 +999,7 @@ namespace Packet
             toBuffer(): NBuffer
             {
                 const username = this.username.substring(0,MAX_STRING_LENGTH)
-                const buffer = new NBuffer(23+username.length)
+                const buffer = new NBuffer(23+2+username.length)
                 this.writeType(buffer)
                 buffer.writeInt32(this.entityID)
                 writeString16(buffer,username.substring(0,MAX_STRING_LENGTH))
@@ -1118,10 +1143,21 @@ namespace Packet
             z: number = NaN
             yaw: number = NaN
             pitch: number = NaN
-            metadata: Metadata[] = []
+            metadata: Metadata = []
             toBuffer(): NBuffer
             {
-                throw new Error("Method not implemented!")
+                const mSize = DataWatcher.getSizeOfMetadata(this.metadata)
+                const buffer = new NBuffer(20 + mSize > 0 ? mSize : 1)
+                this.writeType(buffer)
+                buffer.writeInt32(this.entityID)
+                buffer.writeInt8(this.mobType)
+                buffer.writeInt32(this.x)
+                buffer.writeInt32(this.y)
+                buffer.writeInt32(this.z)
+                buffer.writeInt8(this.yaw)
+                buffer.writeInt8(this.pitch)
+                mSize > 0 ? buffer.write(DataWatcher.toBuffer(this.metadata)) : buffer.writeInt8(0x7F)
+                return buffer
             }
             protected parseContent(buffer: NBuffer): this 
             {
@@ -1132,7 +1168,7 @@ namespace Packet
                 this.z = buffer.readInt32()
                 this.yaw = buffer.readInt8()
                 this.pitch = buffer.readInt8()
-                this.metadata = Metadata.read(buffer)
+                this.metadata = DataWatcher.parse(buffer)
                 return this
             }
         }
@@ -1314,15 +1350,20 @@ namespace Packet
         export class EntityMetadata extends IEntity
         {
             readonly type: Type = Type.EntityMetadata
-            metadata: Metadata[] = []
+            metadata: Metadata = []
             toBuffer(): NBuffer
             {
-                throw new Error("Method not implemented!")    
+                const mSize = DataWatcher.getSizeOfMetadata(this.metadata)
+                const buffer = new NBuffer(5 + mSize > 0 ? mSize : 1)
+                this.writeType(buffer)
+                buffer.writeInt32(this.entityID)
+                mSize > 0 ? buffer.write(DataWatcher.toBuffer(this.metadata)) : buffer.writeInt8(0x7F)
+                return buffer
             }
             protected parseContent(buffer: NBuffer): this 
             {
                 this.entityID = buffer.readInt32()
-                this.metadata = Metadata.read(buffer)
+                this.metadata = DataWatcher.parse(buffer)
                 return this    
             }
         }
@@ -1461,6 +1502,319 @@ namespace Packet
                 this.z = buffer.readInt32()
                 this.blockType = buffer.readInt8()
                 this.metadata = buffer.readInt8()
+                return this    
+            }
+        }
+        export class BlockAction extends Packet
+        {
+            readonly type: Type = Type.BlockAction
+            x: number = NaN
+            y: number = NaN
+            z: number = NaN
+            blockType: number = NaN
+            data: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(13)
+                this.writeType(buffer)
+                buffer.writeInt32(this.x)
+                buffer.writeInt16(this.y)
+                buffer.writeInt32(this.z)
+                buffer.writeInt8(this.blockType)
+                buffer.writeInt8(this.data)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.x = buffer.readInt32()
+                this.y = buffer.readInt16()
+                this.z = buffer.readInt32()
+                this.blockType = buffer.readInt8()
+                this.data = buffer.readInt8()
+                return this
+            }
+        }
+        export class Explosion extends Packet
+        {
+            readonly type: Type = Type.Explosion
+            x: number = NaN
+            y: number = NaN
+            z: number = NaN
+            float1: number = NaN
+            count: number = NaN
+            records: [number,number,number][] = []
+            toBuffer(): NBuffer 
+            {
+                const buffer = new NBuffer(33 + 3*this.count)
+                this.writeType(buffer)
+                buffer.writeDouble(this.x)
+                buffer.writeDouble(this.y)
+                buffer.writeDouble(this.z)
+                buffer.writeFloat(this.float1)
+                buffer.writeInt32(this.count)
+                for(const record of this.records)
+                {
+                    buffer.writeInt8(record[0])
+                    buffer.writeInt8(record[1])
+                    buffer.writeInt8(record[2])
+                }    
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this
+            {
+                this.x = buffer.readDouble()
+                this.y = buffer.readDouble()
+                this.z = buffer.readDouble()
+                this.float1 = buffer.readFloat()
+                this.count = buffer.readInt32()
+                this.records = []
+                for(var i = 0;i < this.count;i++) this.records.push([buffer.readInt8(),buffer.readInt8(),buffer.readInt8()])
+                return this
+            }
+        }
+        export class SoundEffect extends Packet
+        {
+            readonly type: Type = Type.SoundEffect
+            effect: number = NaN
+            x: number = NaN
+            y: number = NaN
+            z: number = NaN
+            soundData: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(18)
+                this.writeType(buffer)
+                buffer.writeInt32(this.effect)
+                buffer.writeInt32(this.x)
+                buffer.writeInt8(this.y)
+                buffer.writeInt32(this.z)
+                buffer.writeInt32(this.soundData)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.effect = buffer.readInt32()
+                this.x = buffer.readInt32()
+                this.y = buffer.readInt8()
+                this.z = buffer.readInt32()
+                this.soundData = buffer.readInt32()
+                return this    
+            }
+        }
+        export class NewInvalidState extends Packet
+        {
+            readonly type: Type = Type.NewInvalidState
+            reason: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(2)
+                this.writeType(buffer)
+                buffer.writeInt8(this.reason)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this
+            {
+                this.reason = buffer.readInt8()
+                return this    
+            }
+        }
+        export class Thunderbolt extends Entity
+        {
+            readonly type: Type = Type.Thunderbolt
+            bool1: boolean = false
+            x: number = NaN
+            y: number = NaN
+            z: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(18)
+                this.writeType(buffer)
+                buffer.writeInt32(this.entityID)
+                writeBoolean(buffer,this.bool1)
+                buffer.writeInt32(this.x)
+                buffer.writeInt32(this.y)
+                buffer.writeInt32(this.z)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.entityID = buffer.readInt32()
+                this.bool1 = readBoolean(buffer)
+                this.x = buffer.readInt32()
+                this.y = buffer.readInt32()
+                this.z = buffer.readInt32()
+                return this    
+            }
+        }
+        export class OpenWindow extends Packet
+        {
+            readonly type: Type = Type.OpenWindow
+            windowID: number = NaN
+            inventory: number = NaN
+            title: string = String()
+            slots: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(6+2+this.title.length)
+                this.writeType(buffer)
+                buffer.writeInt8(this.windowID)
+                buffer.writeInt8(this.inventory)
+                writeString8(buffer,this.title)
+                buffer.writeInt8(this.slots)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.windowID = buffer.readInt8()
+                this.inventory = buffer.readInt8()
+                this.title = readString8(buffer)
+                this.slots = buffer.readInt8()
+                return this    
+            }
+        }
+        export class SetSlot extends Packet
+        {
+            readonly type: Type = Type.SetSlot
+            windowID: number = NaN
+            slot: number = NaN
+            item: number = NaN
+            count: number = NaN
+            uses: number = NaN
+            toBuffer(): NBuffer
+            {
+                const optional = this.item != -1
+                const buffer = new NBuffer(optional ? 9 : 6)
+                this.writeType(buffer)
+                buffer.writeInt8(this.windowID)
+                buffer.writeInt16(this.slot)
+                buffer.writeInt16(this.item)
+                if(optional)
+                {
+                    buffer.writeInt8(this.count)
+                    buffer.writeInt16(this.uses)
+                }
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.windowID = buffer.readInt8()
+                this.slot = buffer.readInt16()
+                this.item = buffer.readInt16()
+                if(this.item != -1)
+                {
+                    this.count = buffer.readInt8()
+                    this.uses = buffer.readInt16()
+                }    
+                return this
+            }
+        }
+        export class WindowItems extends Packet
+        {
+            readonly type: Type = Type.WindowItems
+            windowID: number = NaN
+            count: number = NaN
+            items: ItemStack[] = []
+            toBuffer(): NBuffer 
+            {
+                const buffer = new NBuffer(4+ItemStack.getSizeOfList(this.items)) 
+                this.writeType(buffer)
+                buffer.writeInt8(this.windowID)
+                buffer.writeInt16(this.count)
+                for(const item of this.items) buffer.write(ItemStack.toBuffer(item))
+                return buffer   
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.windowID = buffer.readInt8()
+                this.count = buffer.readInt16()
+                this.items = []
+                for(var i = 0;i < this.count;i++) this.items.push(ItemStack.read(buffer))
+                return this 
+            }
+        }
+        export class UpdateProgressBar extends Packet
+        {
+            readonly type: Type = Type.UpdateProgressBar
+            windowID: number = NaN
+            progress: number = NaN
+            value: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(6)
+                this.writeType(buffer)
+                buffer.writeInt8(this.windowID)
+                buffer.writeInt16(this.progress)
+                buffer.writeInt16(this.value)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.windowID = buffer.readInt8()
+                this.progress = buffer.readInt16()
+                this.value = buffer.readInt16()
+                return this    
+            }
+        }
+        export class ItemData extends Packet
+        {
+            readonly type: Type = Type.ItemData
+            itemType: number = NaN
+            item: number = NaN
+            textLength: number = NaN
+            text: number[] = []
+            toBuffer(): NBuffer 
+            {
+                const buffer = new NBuffer(6+this.textLength)
+                this.writeType(buffer)
+                buffer.writeInt16(this.itemType)
+                buffer.writeInt16(this.item)
+                buffer.writeUInt8(this.textLength)
+                buffer.writeArray(this.text,NBuffer.SizeOf.Int8)
+                return buffer    
+            }
+            protected parseContent(buffer: NBuffer): this
+            {
+                this.itemType = buffer.readInt16()
+                this.item = buffer.readInt16()
+                this.textLength = buffer.readUInt8()
+                this.text = buffer.readArray(this.textLength,NBuffer.SizeOf.Int8)
+                return this    
+            }
+        }
+        export class IncrementStatistic extends Packet
+        {
+            readonly type: Type = Type.IncrementStatistic
+            statistic: number = NaN
+            amount: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(6)
+                this.writeType(buffer)
+                buffer.writeInt32(this.statistic)
+                buffer.writeInt8(this.amount)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.statistic = buffer.readInt32()
+                this.amount = buffer.readInt8()
+                return this    
+            }
+        }
+        export class DisconnectKick extends Packet
+        {
+            readonly type: Type = Type.DisconnectKick
+            reason: string = String()
+            toBuffer(): NBuffer 
+            {
+                const buffer = new NBuffer(3+2+this.reason.length)
+                this.writeType(buffer)
+                writeString16(buffer,this.reason)
+                return buffer    
+            }
+            protected parseContent(buffer: NBuffer): this
+            {
+                this.reason = readString16(buffer)
                 return this    
             }
         }
