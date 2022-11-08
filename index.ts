@@ -1,47 +1,37 @@
 import NBuffer from "@nodetf/buffer"
-import DataWatcher, { Metadata } from "./metadata"
-
 import { inflateSync } from "node:zlib"
+
 import ItemStack from "./itemstack"
-
-function readString8(buffer: NBuffer)
-{
-    const size = buffer.readInt16()
-    return buffer.readString(size,"utf-8")
-}
-
-function writeString8(buffer: NBuffer,string: string)
-{
-    buffer.writeInt16(string.length)
-    buffer.writeString(string,"utf-8")
-}
+import DataWatcher, { Metadata } from "./metadata"
 
 function readString16(buffer: NBuffer)
 {
     const size = buffer.readInt16()
-    return buffer.readString(size,"ucs-2")
+    const chars = buffer.readArray(size,NBuffer.SizeOf.Int16)
+    return String.fromCharCode(...chars)
 }
 
 function writeString16(buffer: NBuffer,string: string)
 {
+    if(string.length > 32767) throw new Error("String is too big!")
     buffer.writeInt16(string.length)
-    buffer.writeString(string,"ucs-2")
+    for(const char of string) buffer.writeInt16(char.charCodeAt(0))
 }
 
 function writeBoolean(buffer: NBuffer,boolean: boolean)
 {
-    buffer.writeInt8(boolean ? 0x01 : 0x00)
+    buffer.writeInt8(boolean ? 1 : 0)
 }
 
 function readBoolean(buffer: NBuffer)
 {
-    return buffer.readInt8() == 0x01
+    return buffer.readInt8() != 0
 }
 
 abstract class Packet
 {
     abstract readonly type: Packet.Type
-    protected checkType(type: Packet.Type)
+    #checkType(type: Packet.Type)
     {
         if(type != this.type) throw new Error(`Wrong Packet! Expected ${Packet.Type[this.type]}, got ${Packet.Type[type]}!`)
     }
@@ -51,7 +41,7 @@ abstract class Packet
     }
     parse(buffer: NBuffer)
     {
-        this.checkType(buffer.readInt8())
+        this.#checkType(buffer.readInt8())
         return this.parseContent(buffer)
     }
     protected abstract parseContent(buffer: NBuffer): this
@@ -60,6 +50,15 @@ abstract class Packet
 
 namespace Packet
 {
+    export class Error extends globalThis.Error
+    {
+        constructor(readonly arr: Array<Packet>,readonly buffer: NBuffer,readonly packet?: Packet,message?: string,options?: ErrorOptions)
+        {
+            super(message,options)
+            this.name = packet ? `${Type[packet.type]}Error` : "PacketError"
+            NBuffer.write("error-packet.bin",buffer)
+        }
+    }
     function readType(buffer: NBuffer)
     {
         const type = buffer.readInt8()
@@ -154,9 +153,10 @@ namespace Packet
             message: string = String()
             toBuffer(): NBuffer
             {
-                const buffer = new NBuffer(3+(this.message.length*2))
+                const message = this.message.substring(0,MAX_MESSAGE_LENGTH)
+                const buffer = new NBuffer(3+2+message.length)
                 this.writeType(buffer)
-                writeString16(buffer,this.message.substring(0,MAX_MESSAGE_LENGTH))
+                writeString16(buffer,message)
                 return buffer    
             }
             parseContent(buffer: NBuffer)
@@ -473,12 +473,16 @@ namespace Packet
             text: [string,string,string,string] = ["","","",""]
             toBuffer(): NBuffer
             {
-                const buffer = new NBuffer(11+(MAX_STRING_LENGTH*4))
+                const buffer = new NBuffer(11+(2*4)+(15*4))
                 this.writeType(buffer)
                 buffer.writeInt32(this.x)
                 buffer.writeInt8(this.y)
                 buffer.writeInt32(this.z)
-                for(const t of this.text) writeString16(buffer,t)
+                for(const t of this.text) 
+                {
+                    const text = t.substring(0,15)
+                    writeString16(buffer,text)
+                }
                 return buffer
             }
             protected parseContent(buffer: NBuffer): this 
@@ -496,14 +500,17 @@ namespace Packet
         export function readArray(buffer: NBuffer): ReadonlyArray<Packet>
         {
             const arr: Array<Packet> = []
-            while(true) try
+            var packet: Packet | undefined = undefined
+            while(buffer.length > buffer.readOffset) try
             {
-                 arr.push(read(buffer))
+                packet = read(buffer)
+                arr.push(packet)
             }
-            catch(e)
+            catch(e) 
             {
-                return arr
+                throw new Error(arr,buffer,packet,"Couldn't parse Serverside!",{cause: e})
             }
+            return arr
         }
         export function read(buffer: NBuffer): Packet
         {
@@ -553,7 +560,8 @@ namespace Packet
                 case Type.UpdateSign:
                     return new Common.UpdateSign().parse(buffer)
                 default:
-                    throw new Error(`${Type[type]} is not a Client Packet!`)
+                    const maybeIts = Type[type] ? `. Maybe its ${Type[type]}?` : ""
+                    throw new globalThis.Error(`Unknown Client Packet Type: 0x${type.toString(16)}${maybeIts}`)
             }
         }
         export class LoginRequest extends Packet
@@ -563,10 +571,11 @@ namespace Packet
             username: string = String()
             toBuffer(): NBuffer
             {
-                const buffer = new NBuffer(23+2+this.username.substring(0,MAX_STRING_LENGTH).length)
+                const username = this.username.substring(0,MAX_STRING_LENGTH)
+                const buffer = new NBuffer(23+2+username.length)
                 this.writeType(buffer)
                 buffer.writeInt32(this.version)
-                writeString16(buffer,this.username.substring(0,MAX_STRING_LENGTH))
+                writeString16(buffer,username)
                 return buffer
             }
             parseContent(buffer: NBuffer)
@@ -582,9 +591,10 @@ namespace Packet
             username: string = String()
             toBuffer(): NBuffer
             {
-                const buffer = new NBuffer(3+2+this.username.substring(0,MAX_STRING_LENGTH).length)
+                const username = this.username.substring(0,MAX_STRING_LENGTH)
+                const buffer = new NBuffer(3+2+username.length)
                 this.writeType(buffer)
-                writeString16(buffer,this.username.substring(0,MAX_STRING_LENGTH))
+                writeString16(buffer,username)
                 return buffer    
             }
             parseContent(buffer: NBuffer)
@@ -745,16 +755,19 @@ namespace Packet
         export function readArray(buffer: NBuffer): ReadonlyArray<Packet>
         {
             const arr: Array<Packet> = []
-            while(true) try
+            var packet: Packet | undefined = undefined
+            while(buffer.length > buffer.readOffset) try
             {
-                arr.push(read(buffer))
+                packet = read(buffer)
+                arr.push(packet)
             }
-            catch(e)
+            catch(e) 
             {
-                return arr
+                throw new Error(arr,buffer,packet,"Couldn't parse Serverside!",{cause: e})
             }
+            return arr
         }
-        export function read(buffer: NBuffer)
+        export function read(buffer: NBuffer): Packet
         {
             const type = readType(buffer)
             switch(type)
@@ -763,6 +776,8 @@ namespace Packet
                     return new Common.KeepAlive().parse(buffer)
                 case Type.LoginRequest:
                     return new LoginRequest().parse(buffer)
+                case Type.Handshake:
+                    return new Handshake().parse(buffer)
                 case Type.ChatMessage:
                     return new Common.ChatMessage().parse(buffer)
                 case Type.TimeUpdate:
@@ -793,6 +808,8 @@ namespace Packet
                     return new DestroyEntity().parse(buffer)
                 case Type.Entity:
                     return new Entity().parse(buffer)
+                case Type.EntityRelativeMove:
+                    return new EntityRelativeMove().parse(buffer)
                 case Type.EntityLook:
                     return new EntityLook().parse(buffer)
                 case Type.EntityLookAndRelativeMove:
@@ -838,7 +855,8 @@ namespace Packet
                 case Type.DisconnectKick:
                     return new DisconnectKick().parse(buffer)
                 default:
-                    throw new Error(`${Type[type]} is not a Server Packet!`)
+                    const maybeIts = Type[type] ? `. Maybe its ${Type[type]}?` : ""
+                    throw new globalThis.Error(`Unknown Server Packet Type: 0x${type.toString(16)}${maybeIts}`)
             }
         }
         export class LoginRequest extends IEntity
@@ -849,10 +867,11 @@ namespace Packet
             dimension: number = NaN
             toBuffer(): NBuffer
             {
-                const buffer = new NBuffer(16+MAX_STRING_LENGTH)
+                const username = this.username.substring(0,MAX_STRING_LENGTH)
+                const buffer = new NBuffer(16+2+username.length)
                 this.writeType(buffer)
                 buffer.writeInt32(this.entityID)
-                writeString16(buffer,this.username.substring(0,MAX_STRING_LENGTH))
+                writeString16(buffer,username)
                 buffer.writeInt64(this.mapSeed)
                 buffer.writeInt8(this.dimension)
                 return buffer
@@ -864,6 +883,23 @@ namespace Packet
                 this.mapSeed = buffer.readInt64()
                 this.dimension = buffer.readInt8()
                 return this    
+            }
+        }
+        export class Handshake extends Packet
+        {
+            readonly type: Type = Type.Handshake
+            hash: string = String()
+            toBuffer(): NBuffer 
+            {
+                const buffer = new NBuffer(3+2+this.hash.length)
+                this.writeType(buffer)
+                writeString16(buffer,this.hash)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.hash = readString16(buffer)
+                return this
             }
         }
         export class TimeUpdate extends Packet
@@ -1002,7 +1038,7 @@ namespace Packet
                 const buffer = new NBuffer(23+2+username.length)
                 this.writeType(buffer)
                 buffer.writeInt32(this.entityID)
-                writeString16(buffer,username.substring(0,MAX_STRING_LENGTH))
+                writeString16(buffer,username)
                 buffer.writeInt32(this.x)
                 buffer.writeInt32(this.y)
                 buffer.writeInt32(this.z)
@@ -1229,6 +1265,31 @@ namespace Packet
                 return this    
             }
         }
+        export class EntityRelativeMove extends IEntity
+        {
+            readonly type: Type = Type.EntityRelativeMove
+            dX: number = NaN
+            dY: number = NaN
+            dZ: number = NaN
+            toBuffer(): NBuffer
+            {
+                const buffer = new NBuffer(8)
+                this.writeType(buffer)
+                buffer.writeInt32(this.entityID)
+                buffer.writeInt8(this.dX)
+                buffer.writeInt8(this.dY)
+                buffer.writeInt8(this.dZ)
+                return buffer
+            }
+            protected parseContent(buffer: NBuffer): this 
+            {
+                this.entityID = buffer.readInt32()
+                this.dX = buffer.readInt8()
+                this.dY = buffer.readInt8()
+                this.dZ = buffer.readInt8()
+                return this
+            }
+        }
         export class EntityLook extends IEntity
         {
             readonly type: Type = Type.EntityLook
@@ -1418,7 +1479,7 @@ namespace Packet
             protected parseContent(buffer: NBuffer): this
             {
                 this.x = buffer.readInt32()
-                this.y = buffer.readInt8() 
+                this.y = buffer.readInt16() 
                 this.z = buffer.readInt32()
                 this.sizeX = buffer.readInt8()+1
                 this.sizeY = buffer.readInt8()+1
@@ -1498,7 +1559,7 @@ namespace Packet
             protected parseContent(buffer: NBuffer): this 
             {
                 this.x = buffer.readInt32()
-                this.y = buffer.readInt16()
+                this.y = buffer.readInt8()
                 this.z = buffer.readInt32()
                 this.blockType = buffer.readInt8()
                 this.metadata = buffer.readInt8()
@@ -1651,7 +1712,7 @@ namespace Packet
             readonly type: Type = Type.OpenWindow
             windowID: number = NaN
             inventory: number = NaN
-            title: string = String()
+            title: number[] = []
             slots: number = NaN
             toBuffer(): NBuffer
             {
@@ -1659,7 +1720,10 @@ namespace Packet
                 this.writeType(buffer)
                 buffer.writeInt8(this.windowID)
                 buffer.writeInt8(this.inventory)
-                writeString8(buffer,this.title)
+                
+                buffer.writeInt16(this.title.length)
+                buffer.writeArray(this.title,NBuffer.SizeOf.Int8)
+
                 buffer.writeInt8(this.slots)
                 return buffer
             }
@@ -1667,7 +1731,7 @@ namespace Packet
             {
                 this.windowID = buffer.readInt8()
                 this.inventory = buffer.readInt8()
-                this.title = readString8(buffer)
+                this.title = buffer.readArray(buffer.readInt16(),NBuffer.SizeOf.Int8)
                 this.slots = buffer.readInt8()
                 return this    
             }
@@ -1807,9 +1871,10 @@ namespace Packet
             reason: string = String()
             toBuffer(): NBuffer 
             {
-                const buffer = new NBuffer(3+2+this.reason.length)
+                const reason = this.reason.substring(0,100)
+                const buffer = new NBuffer(3+2+reason.length)
                 this.writeType(buffer)
-                writeString16(buffer,this.reason)
+                writeString16(buffer,reason)
                 return buffer    
             }
             protected parseContent(buffer: NBuffer): this

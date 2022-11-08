@@ -56,8 +56,8 @@ const proxyServer = createServer((S) =>
     {
         const buffer = new NBuffer(data)
         buffer.endian = "big"
-        const packet = Packet.Client.readArray(buffer)[0]
-        if(packet && !isPlayerPacket(packet.type)) console.dir(packet)
+        const packets = Packet.Client.readArray(buffer).filter((p) => !isPlayerPacket(p.type))
+        if(packets.length > 0) console.dir(packets)
         proxyClient.write(data)
     })
 })
