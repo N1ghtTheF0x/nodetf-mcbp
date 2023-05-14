@@ -1,13 +1,13 @@
 import DataStream from "../datastream"
-import { Type as PacketType } from "./types"
+import { ClientPacketType } from "./types"
 
-abstract class AbstractPacket
+abstract class ClientPacket
 {
     abstract size(): number
     abstract read(buffer: DataStream): void
     abstract write(): DataStream
 
-    protected constructor(readonly id: PacketType)
+    protected constructor(readonly id: ClientPacketType)
     {
 
     }
@@ -18,4 +18,4 @@ abstract class AbstractPacket
     }
 }
 
-export default AbstractPacket
+export default ClientPacket

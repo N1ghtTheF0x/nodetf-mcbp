@@ -1,26 +1,26 @@
 import DataStream from "../datastream"
 import ClientPacket from "./packet"
 
-class Respawn extends ClientPacket
+class Bed extends ClientPacket
 {
-    field_28048_a: number = NaN
+    field_25019_b: number = NaN
     constructor()
     {
-        super(0x09)
+        super(70)
     }
     read(buffer: DataStream): void 
     {
-        this.field_28048_a = buffer.readInt8()    
+        this.field_25019_b = buffer.readInt8()   
     }
     write(): DataStream 
     {
         return this.createBuffer()
-        .writeInt8(this.field_28048_a)    
+        .writeInt8(this.field_25019_b)
     }
     size(): number 
     {
-        return 1    
+        return 1
     }
 }
 
-export default Respawn
+export default Bed

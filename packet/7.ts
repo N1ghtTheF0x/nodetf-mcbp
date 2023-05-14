@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class UseEntity extends AbstractPacket
+class UseEntity extends ClientPacket
 {
     playerEntityId: number = NaN
     targetEntity: number = NaN

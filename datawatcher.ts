@@ -1,4 +1,4 @@
-import { float, sint16, sint32, sint8 } from "@nodetf/buffer"
+import { FLOAT_SIZE, INT16_SIZE, INT32_SIZE, INT8_SIZE, float, sint16, sint32, sint8 } from "@nodetf/buffer"
 import ItemStack from "./itemstack"
 import Vector3 from "./vector3"
 import DataStream from "./datastream"
@@ -14,6 +14,35 @@ class DataWatcher<Type extends DataWatcher.Type = DataWatcher.Type>
             item.#write(stream)
         stream.writeInt8(127)
         return stream
+    }
+    static size(list: DataWatcher[])
+    {
+        var size = 0
+        for(const item of list)
+            size += INT8_SIZE + item.size()
+        return size + INT8_SIZE
+    }
+    size()
+    {
+        switch(this.type)
+        {
+            case 0:
+                return INT8_SIZE
+            case 1:
+                return INT16_SIZE
+            case 2:
+                return INT32_SIZE
+            case 3:
+                return FLOAT_SIZE
+            case 4:
+                return INT16_SIZE + (this.value as string).length
+            case 5:
+                return INT16_SIZE + INT8_SIZE + INT16_SIZE
+            case 6:
+                return INT32_SIZE + INT32_SIZE + INT32_SIZE
+            default:
+                throw new Error(`Unknown Type: ${this.type}!`)
+        }
     }
     #write(stream: DataStream)
     {
@@ -47,6 +76,8 @@ class DataWatcher<Type extends DataWatcher.Type = DataWatcher.Type>
                 .writeInt32(pos.y)
                 .writeInt32(pos.z)
                 break
+            default:
+                throw new Error(`Unknown Type: ${this.type}!`)
         }
     }
     static read(stream: DataStream)
@@ -79,6 +110,8 @@ class DataWatcher<Type extends DataWatcher.Type = DataWatcher.Type>
                 case 6:
                     list.push(new this(type,a,new Vector3(stream.readInt32(),stream.readInt32(),stream.readInt32())))
                     break
+                default:
+                    throw new Error(`Unknown Type: ${type}!`)
             }
         }
         return list

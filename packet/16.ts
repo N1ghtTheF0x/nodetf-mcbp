@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class BlockItemSwitch extends AbstractPacket
+class BlockItemSwitch extends ClientPacket
 {
     itemID: number = NaN
     constructor()

@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class UpdateHealth extends AbstractPacket
+class UpdateHealth extends ClientPacket
 {
     healthMP: number = NaN
     constructor()

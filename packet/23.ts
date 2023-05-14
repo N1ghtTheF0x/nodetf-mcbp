@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class VehicleSpawn extends AbstractPacket
+class VehicleSpawn extends ClientPacket
 {
     entityId: number = NaN
     xPosition: number = NaN

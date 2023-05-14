@@ -1,29 +1,29 @@
 import DataStream from "../datastream"
 import ClientPacket from "./packet"
 
-class Animation extends ClientPacket
+class AttachEntity extends ClientPacket
 {
     entityId: number = NaN
-    animate: number = NaN
+    vehicleEntityId: number = NaN
     constructor()
     {
-        super(18)
+        super(39)
     }
     read(buffer: DataStream): void 
     {
         this.entityId = buffer.readInt32()
-        this.animate = buffer.readInt8()
+        this.vehicleEntityId = buffer.readInt32()
     }
     write(): DataStream 
     {
-        return this.createBuffer()    
+        return this.createBuffer()
         .writeInt32(this.entityId)
-        .writeInt8(this.animate)
+        .writeInt32(this.vehicleEntityId)
     }
     size(): number 
     {
-        return    5
+        return 8
     }
 }
 
-export default Animation
+export default AttachEntity

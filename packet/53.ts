@@ -1,38 +1,38 @@
 import DataStream from "../datastream"
 import ClientPacket from "./packet"
 
-class BlockDig extends ClientPacket
+class BlockChange extends ClientPacket
 {
     xPosition: number = NaN
     yPosition: number = NaN
     zPosition: number = NaN
-    face: number = NaN
-    status: number = NaN
+    type: number = NaN
+    metadata: number = NaN
     constructor()
     {
-        super(14)
+        super(53)
     }
     read(buffer: DataStream): void 
     {
-        this.status = buffer.readInt8()
         this.xPosition = buffer.readInt32()
         this.yPosition = buffer.readInt8()
         this.zPosition = buffer.readInt32()
-        this.face = buffer.readInt8()
+        this.type = buffer.readInt8()
+        this.metadata = buffer.readInt8()
     }
     write(): DataStream 
     {
-        return this.createBuffer()    
-        .writeInt8(this.status)
+        return this.createBuffer()
         .writeInt32(this.xPosition)
         .writeInt8(this.yPosition)
         .writeInt32(this.zPosition)
-        .writeInt8(this.face)
+        .writeInt8(this.type)
+        .writeInt8(this.metadata)
     }
     size(): number 
     {
-        return    11
+        return 11
     }
 }
 
-export default BlockDig
+export default BlockChange

@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class PlayerInventory extends AbstractPacket
+class PlayerInventory extends ClientPacket
 {
     entityID: number = NaN
     slot: number = NaN

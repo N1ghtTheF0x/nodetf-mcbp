@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class Collect extends AbstractPacket
+class Collect extends ClientPacket
 {
     collectedEntityId: number = NaN
     collectorEntityId: number = NaN

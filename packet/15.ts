@@ -1,8 +1,8 @@
 import DataStream from "../datastream"
 import ItemStack from "../itemstack"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class Place extends AbstractPacket
+class Place extends ClientPacket
 {
     xPosition: number = NaN
     yPosition: number = NaN

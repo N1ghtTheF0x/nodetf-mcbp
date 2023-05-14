@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class NamedEntitySpawn extends AbstractPacket
+class NamedEntitySpawn extends ClientPacket
 {
     entityId: number = NaN
     name: string = String()

@@ -1,8 +1,8 @@
 import DataStream from "../datastream"
 import DataWatcher from "../datawatcher"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class MobSpawn extends AbstractPacket
+class MobSpawn extends ClientPacket
 {
     entityId: number = NaN
     type: number = NaN
@@ -12,7 +12,8 @@ class MobSpawn extends AbstractPacket
     yaw: number = NaN
     pitch: number = NaN
     metaData: DataWatcher[] = []
-    receivedMetadata: DataWatcher[] = []
+    get receivedMetadata(){return this.metaData}
+    set receivedMetadata(val){this.metaData = val}
     constructor()
     {
         super(24)
@@ -26,7 +27,7 @@ class MobSpawn extends AbstractPacket
         this.zPosition = buffer.readInt32()
         this.yaw = buffer.readInt8()
         this.pitch = buffer.readInt8()
-        this.receivedMetadata = DataWatcher.read(buffer)
+        this.metaData = DataWatcher.read(buffer)
     }
     write(): DataStream 
     {
@@ -42,7 +43,7 @@ class MobSpawn extends AbstractPacket
     }
     size(): number 
     {
-        return 20   
+        return 19 + DataWatcher.size(this.metaData)
     }
 }
 

@@ -1,6 +1,6 @@
 import DataStream from "../datastream"
 import Flying from "./10"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
 class PlayerLookMove extends Flying
 {

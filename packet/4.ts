@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class UpdateTime extends AbstractPacket
+class UpdateTime extends ClientPacket
 {
     time: bigint = 0n
     constructor()

@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class Chat extends AbstractPacket
+class Chat extends ClientPacket
 {
     message: string = String()
     constructor()

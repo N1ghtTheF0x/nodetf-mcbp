@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class KeepAlive extends AbstractPacket
+class KeepAlive extends ClientPacket
 {
     constructor()
     {

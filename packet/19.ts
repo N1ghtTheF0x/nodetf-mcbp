@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class EntityAction extends AbstractPacket
+class EntityAction extends ClientPacket
 {
     entityId: number = NaN
     state: number = NaN

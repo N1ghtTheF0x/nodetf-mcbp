@@ -1,32 +1,32 @@
 import DataStream from "../datastream"
 import ClientPacket from "./packet"
 
-class SpawnPosition extends ClientPacket
+class PreChunk extends ClientPacket
 {
     xPosition: number = NaN
     yPosition: number = NaN
-    zPosition: number = NaN
+    mode: boolean = false
     constructor()
     {
-        super(0x06)
+        super(50)
     }
     read(buffer: DataStream): void 
     {
         this.xPosition = buffer.readInt32()
         this.yPosition = buffer.readInt32()
-        this.zPosition = buffer.readInt32()    
+        this.mode = buffer.readBoolean()
     }
     write(): DataStream 
     {
         return this.createBuffer()
         .writeInt32(this.xPosition)
         .writeInt32(this.yPosition)
-        .writeInt32(this.zPosition)    
+        .writeBoolean(this.mode)
     }
     size(): number 
     {
-        return 12
+        return 9
     }
 }
 
-export default SpawnPosition
+export default PreChunk

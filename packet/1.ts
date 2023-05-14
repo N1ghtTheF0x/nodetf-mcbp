@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class Login extends AbstractPacket
+class Login extends ClientPacket
 {
     protocolVersion: number = NaN
     username: string = String()

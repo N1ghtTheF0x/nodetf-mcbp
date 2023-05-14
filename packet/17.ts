@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class Sleep extends AbstractPacket
+class Sleep extends ClientPacket
 {
     field_22045_a: number = NaN
     field_22044_b: number = NaN

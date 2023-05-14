@@ -1,7 +1,7 @@
 import DataStream from "../datastream"
-import AbstractPacket from "./packet"
+import ClientPacket from "./packet"
 
-class Handshake extends AbstractPacket
+class Handshake extends ClientPacket
 {
     username: string = String()
     constructor()
